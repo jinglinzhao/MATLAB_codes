@@ -5,8 +5,9 @@ function [fshift,power,Y] = FUNCTION_FFT(X, Fs)
 % original signal length. This will pad the signal X with trailing zeros 
 % in order to improve the performance of fft.
 
-n       = 2^nextpow2(length(X))*8;
-fshift  = Fs*((0:n-1)/n-0.5);
+% n       = 2^nextpow2(length(X));
+n = length(X);
+fshift  = Fs*((0.5:n-0.5)/n-0.5);
 % fshift  = transpose(fshift);
 
 % Power is the squared magnitude of a signal's Fourier transform,
