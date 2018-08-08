@@ -33,17 +33,13 @@ if 0
     % window  = v1 * 0 + 1;
 end
 
-
-
-
 % estimate the size of array FFT_power
 dat_name    = [DIR, '/4-ccf_dat/', char(file_name(1))];
-A           = importdata(dat_name);
-[aa, bb, yy]= FUNCTION_FFT(A, 0.1);
+A1           = importdata(dat_name);
+[aa, bb, yy]= FUNCTION_FFT(A1, 0.1);
 size1       = length(bb);
 FFT_power   = zeros(size1, N_FILE);
 Y           = zeros(size1, N_FILE);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Stacked cross correlation function %
@@ -56,16 +52,22 @@ for n = 1:N_FILE
     A           = importdata(dat_name);
 
 %     A_spline    = A_spline .* window;
-    plot(x, A)
+    if mod(n,5) == 1
+        plot(x, A-A1, 'k-')
+    end
+%     plot(x, A-A1, 'k')
     [FFT_frequency, FFT_power(:, n), Y(:, n)] = FUNCTION_FFT(A, Fs);
     
 end     
 
 hold off
-title('Stacked cross correlation function')
-xlabel('Wavelength in RV [km/s]')
+% title('Stacked cross correlation function')
+% ylim([-0.001 0.1])
+set(gca,'fontsize',20)
+xlabel('km/s')
 ylabel('Normalized intensity')
-saveas(gcf,'1-Line_Profile','png')
+% saveas(gcf,'1-Line_Profile','png')
+saveas(gcf,'1-Differential_line_Profile','png')
 close(h)
 
 
@@ -80,14 +82,14 @@ for n = 1:N_FILE
 %     xlabel('FT frequency (1 / velocity in wavelength)')
 %     ylabel('Differential power') 
     
-    plot(FFT_frequency, FFT_power(:, n), '.')
-    title('FT power in all epochs (overplot)')
-    xlabel('FT frequency (1 / velocity in wavelength)')
-    ylabel('power')   
-%     
-    xlim([-0.5 0.5])
+    plot(FFT_frequency, FFT_power(:, n), 'k')
+%     title('Stacked power spectrum')
 end 
 hold off
+xlabel('\xi [s/km]')
+ylabel('Power')   
+xlim([-0.15 0.1501])
+set(gca,'fontsize',20)
 saveas(gcf,'2-FT_power','png')
 % saveas(gcf,'2-Differential_FT_power','png')
 close(h)
@@ -106,34 +108,110 @@ saveas(gcf,'3-Phase_angle','png')
 close(h)
 
 
-
-
 %%%%%%%%%%%%%%%%%%%%%
 % Phase angle -> RV %
 %%%%%%%%%%%%%%%%%%%%%
-slope = zeros(1,N_FILE);
-RV_FT = zeros(1,N_FILE);
-h = figure; 
-    hold on
-    for i = 1:N_FILE
-        n = (size(FFT_frequency,2)/2+1-15):(size(FFT_frequency,2)/2+1+15);
-        xx = FFT_frequency(n);
-        yy = angle(Y(n, i)) - angle(Y(n, 1));
-        plot(xx, yy, '-')
-        title('Phase angle (relative to 1st epoch)')
-        xlabel('FT frequency (1 / velocity in wavelength)')
-        ylabel('Phase angle [radian]')
+if 0    % old version
+    slope = zeros(1,N_FILE);
+    RV_FT = zeros(1,N_FILE);
+    h = figure; 
+        hold on
+        for i = 1:N_FILE
+            n = (size(FFT_frequency,2)/2+1-15):(size(FFT_frequency,2)/2+1+15);
+            xx = FFT_frequency(n);
+            yy = angle(Y(n, i)) - angle(Y(n, 1));
+            plot(xx, yy, '-')
+            title('Phase angle (relative to 1st epoch)')
+            xlabel('FT frequency (1 / velocity in wavelength)')
+            ylabel('Phase angle [radian]')
 
-        % Phase angle -> RV
-        p = polyfit(xx, unwrap(angle(Y(n, i)))',3);
-        slope(i) = p(3);
-        RV_FT1 = -slope(1) / (2*pi);
-        RV_FT(i) = -slope(i) / (2*pi) - RV_FT1;
+            % Phase angle -> RV
+            p = polyfit(xx, unwrap(angle(Y(n, i)))',3);
+            slope(i) = p(3);
+            RV_FT1 = -slope(1) / (2*pi);
+            RV_FT(i) = -slope(i) / (2*pi) - RV_FT1;
+        end
+        hold off
+        saveas(gcf,'4-Relative_phase_angle','png')
+    close(h)
+end
+
+n   = (FFT_frequency > -0.15) & (FFT_frequency < 0.15);
+slope = zeros(1,N_FILE);
+RV_FT  = zeros(1,N_FILE);
+wegihted_velocity = zeros(1,N_FILE);
+h = figure; 
+hold on
+for i = 1:N_FILE
+    xx  = FFT_frequency(n);
+    yy  = angle(Y(n, i)) - angle(Y(n, 1));
+    if mod(i,5) == 1
+        plot(xx, yy, 'k-')
     end
-    hold off
-    saveas(gcf,'4-Relative_phase_angle','png')
+    % Phase angle -> RV
+    weight = FFT_power(n,i)';
+    [fitresult, gof] = createFit(xx, yy', weight);
+    slope(i) = fitresult.p1;
+    RV_FT(i) = -slope(i) / (2*pi);
+end
+hold off
+set(gca,'fontsize',20)
+xlabel('\xi [s/km]')
+ylabel('\Delta \phi [radian]')
+saveas(gcf,'4-Relative_phase_angle','png')
 close(h)
 
+% Low-pass %
+nl      = (FFT_frequency >= 0) & (FFT_frequency < 0.05);
+RV_FTL  = zeros(1,N_FILE);
+h       = figure; 
+hold on
+for i = 1:N_FILE
+    xx  = FFT_frequency(nl);
+    yy  = angle(Y(nl, i)) - angle(Y(nl, 1));
+    if mod(i,5) == 1
+        plot(xx, yy, 'k-')
+    end
+    % Phase angle -> RV
+    weight = FFT_power(nl,i)';
+    [fitresult, gof] = createFit(xx, yy', weight);
+    slope(i) = fitresult.p1;
+    RV_FTL(i) = -slope(i) / (2*pi);
+end
+hold off
+set(gca,'fontsize',20)
+xlabel('\xi [s/km]')
+ylabel('\Delta \phi [radian]')
+title('Low-pass')
+saveas(gcf,'4-Relative_phase_angle_L','png')
+close(h)
+
+% high-pass % 
+n       = (FFT_frequency >= 0.04) & (FFT_frequency <= 0.15);
+RV_FTH  = zeros(1,N_FILE);
+h       = figure; 
+hold on
+for i = 1:N_FILE
+    xx  = FFT_frequency(n);
+    yy  = angle(Y(n, i)) - angle(Y(n, 1));
+    if mod(i,5) == 1
+        plot(xx, yy, 'k-')
+    end
+    % Phase angle -> RV
+    weight = FFT_power(n,i)';
+    [fitresult, gof] = createFit(xx, yy', weight);
+    slope(i) = fitresult.p1;
+    RV_FTH(i) = -slope(i) / (2*pi);    
+end
+hold off
+set(gca,'fontsize',20)
+xlabel('\xi [s/km]')
+ylabel('\Delta \phi [radian]')
+title('High-pass')
+saveas(gcf,'4-Relative_phase_angle_H','png')
+close(h)
+
+RV_FT = RV_FTL;
 RV_FT = (RV_FT - mean(RV_FT)) * 1000;
 
 % Time sequence %
@@ -281,29 +359,38 @@ b = fminunc(fun_b,b0,options);
            
             
 h = figure;
-    subplot(2,1,1)
+    subplot(3,1,1:2)
     hold on 
-    errorbar(MJD2, RV_HARPS2, RV_noise2, 'b.', 'MarkerSize', 16)
-    errorbar(MJD2, RV_FT2, RV_noise2, 'rs', 'MarkerSize', 5, 'MarkerFaceColor', 'r')
-    plot(MJD2, b(1) + b(2) * MJD2, '-')
+    scatter(MJD2, RV_FT2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    scatter(MJD2, RV_HARPS2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);
+%     errorbar(MJD2, RV_FT2, RV_noise2, 'k.', 'MarkerSize', 0.1);
+%     errorbar(MJD2, RV_HARPS2, RV_noise2, 'b.', 'MarkerSize', 0.1);
+    plot1 = plot(MJD2, b(1) + b(2) * MJD2, 'b--', 'LineWidth', 2);
+    plot1.Color(4) = 0.4;        
+    
     hold off
     xlim([-0.003 max(MJD2)+0.003])
-    legend('HARPS', 'FT')
+    legend('FT', 'Gaussian')
 %     title('Transit RV curve')
     ylabel('RV [m/s]')
+    set(gca,'fontsize', 15)
+    set(gca,'xticklabel',[])    
+    grid on
 
     % Jitter part %
-    subplot(2,1,2)
+    subplot(3,1,3)
     t2_plot         = linspace(min(MJD2), max(MJD2), 1001);
     jitter2_plot    = FUNCTION_GAUSSIAN_SMOOTHING(MJD2, jitter2, weight2, t2_plot, width);
     hold on
-    errorbar(MJD2, jitter2, RV_noise2 * sqrt(2), 'k.', 'MarkerSize', 16)
-    plot(t2_plot, jitter2_plot, 'k-', 'LineWidth',2)
+    scatter(MJD2, jitter2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    errorbar(MJD2, jitter2, RV_noise2 * sqrt(2), 'k.', 'MarkerSize', 0.1)
+    plot2 = plot(t2_plot, jitter2_plot, 'k-', 'LineWidth',2);
+    plot2.Color(4) = 0.4;       
     hold off
     xlim([-0.003 max(MJD2)+0.003])
     xlabel('Time [d]')
-    ylabel('RV [m/s]')
-    legend('\Delta RV')
+    ylabel('\Delta RV [m/s]')
+    set(gca,'fontsize', 15)
     saveas(gcf,'8-Proto_jitter2','png')
 close(h)
 
@@ -315,21 +402,37 @@ a0 = [10, 0];
 a = fminunc(fun_a,a0,options);
 
 h = figure;
-    subplot(2,1,1)       % add first plot in 2 x 1 grid
+subplot(3,1,1:2)       % add first plot in 2 x 1 grid
     hold on 
-    errorbar(MJD2, a(1) * jitter_smooth2 + a(2), RV_noise2 * sqrt(2) * a(1), 'ks', 'MarkerSize', 5, 'MarkerFaceColor', 'k')
-    errorbar(MJD2, RV_RM2, RV_noise2, 'b.', 'MarkerSize', 16)
+    scatter(MJD2, a(1) * jitter2 + a(2), 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    plot3 = plot(t2_plot, a(1) * jitter2_plot + a(2) , 'k', 'LineWidth', 2);
+    plot3.Color(4) = 0.4;  
+    scatter(MJD2, RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);    
+    errorbar(MJD2, a(1) * jitter2 + a(2), (RV_noise2 * sqrt(2) * a(1)), 'k.', 'MarkerSize', 0.1)
+    errorbar(MJD2, RV_RM2, RV_noise2, 'b.', 'MarkerSize', 0.1)
     xlim([-0.003 max(MJD2)+0.003])
-    ylabel('RV (m/s)')
-%     title('Jitter recovery')
-    legend('Jitter model', 'RM effect from HARPS')
+    ylabel('RV [m/s]')
+    set(gca,'fontsize', 15)
+    set(gca,'xticklabel',[])
+    grid on 
+    legend('Model', 'Smoothed model', 'RM effect (Jitter)')
     hold off
-    subplot(2,1,2)       % add first plot in 2 x 1 grid
-    plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 'k.', 'MarkerSize', 16)
+    
+subplot(3,1,3)       % add first plot in 2 x 1 grid
+    hold on
+%     scatter(MJD2, a(1) * jitter2 + a(2) - RV_RM2, 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5)
+%     errorbar(MJD2, a(1) * jitter2 + a(2) - RV_RM2, (RV_noise2 * sqrt(2) * a(1)), 'k.', 'MarkerSize', 0.1)
+    scatter(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5)
+    plot5 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 'k', 'LineWidth', 2);
+    plot5.Color(4) = 0.4;
+%     plot4 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2 , 'k', 'LineWidth', 2);
+%     plot4.Color(4) = 0.4;
+    hold off
     xlabel('Time [d]')
-    ylabel('Residual (m/s)')
-    ylim([-14 14])
+    ylabel('Residual [m/s]')
+%     ylim([-30 30])
     xlim([-0.003 max(MJD2)+0.003])
+    set(gca,'fontsize', 15)
     saveas(gcf,'9-RM_fit2','png')
 close(h)
 

@@ -3,9 +3,9 @@
 %%%%%%%%%%%%%%
 % Parameters %
 %%%%%%%%%%%%%%
-SN          = 5000;
+SN          = 1000;
 N_FILE      = 100;                               
-grid_size    = 0.1;
+grid_size   = 0.1;
 Fs          = 1/grid_size;
 v_max       = 10;
 v_0         = (-v_max : grid_size : v_max)';          % km/s
