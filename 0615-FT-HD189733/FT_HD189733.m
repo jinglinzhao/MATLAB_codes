@@ -211,7 +211,7 @@ title('High-pass')
 saveas(gcf,'4-Relative_phase_angle_H','png')
 close(h)
 
-RV_FT = RV_FTL;
+RV_FT = RV_FTH;
 RV_FT = (RV_FT - mean(RV_FT)) * 1000;
 
 % Time sequence %
