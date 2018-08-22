@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%
 % Parameters %
 %%%%%%%%%%%%%%
-star        = 'HD85390';
+star        = 'Gl581';
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
 file_name   = {file_list.name};
@@ -86,7 +86,7 @@ end
 hold off
 xlabel('\xi [s/km]')
 ylabel('Power')   
-xlim([-0.18 0.1801])
+xlim([-0.25 0.25])
 set(gca,'fontsize',20)
 saveas(gcf,'2-FT_power','png')
 % saveas(gcf,'2-Differential_FT_power','png')
@@ -101,7 +101,7 @@ plot(FFT_frequency, unwrap(angle(Y(:, 1))), '.')
 title('Phase angle (Rotation phase = 0.51)')
 xlabel('FT frequency (1 / velocity in wavelength)')
 ylabel('Phase angle [radian]')
-% xlim([-0.35 0.35])
+xlim([-0.35 0.35])
 saveas(gcf,'3-Phase_angle','png')
 close(h)
 
@@ -109,7 +109,7 @@ close(h)
 %%%%%%%%%%%%%%%%%%%%%
 % Phase angle -> RV %
 %%%%%%%%%%%%%%%%%%%%%
-n   = (FFT_frequency > -0.15) & (FFT_frequency < 0.15);
+n   = (FFT_frequency > -0.22) & (FFT_frequency < 0.22);
 slope = zeros(1,N_FILE);
 RV_FT  = zeros(1,N_FILE);
 wegihted_velocity = zeros(1,N_FILE);
@@ -135,7 +135,7 @@ saveas(gcf,'4-Relative_phase_angle','png')
 close(h)
 
 % Low-pass %
-nl      = (FFT_frequency >= 0) & (FFT_frequency < 0.05);
+nl      = (FFT_frequency >= 0) & (FFT_frequency < 0.06);
 RV_FTL  = zeros(1,N_FILE);
 h       = figure; 
 hold on
@@ -160,7 +160,7 @@ saveas(gcf,'4-Relative_phase_angle_L','png')
 close(h)
 
 % high-pass % 
-n       = (FFT_frequency >= 0.04) & (FFT_frequency <= 0.15);
+n       = (FFT_frequency >= 0.06) & (FFT_frequency <= 0.22);
 RV_FTH  = zeros(1,N_FILE);
 h       = figure; 
 hold on
@@ -195,7 +195,6 @@ h = figure;
     hold on
     errorbar(MJD, RV_HARPS, RV_noise , 'r.', 'MarkerSize', 20)
     errorbar(MJD, jitter_raw, RV_noise , 'b.', 'MarkerSize', 20)
-%     errorbar(MJD, jitter_raw, RV_noise , 'b.', 'MarkerSize', 20)
     grid on
     hold off
     xlabel('Time [d]')
@@ -214,10 +213,10 @@ h = figure;
     saveas(gcf,'6-HARPS_vs_FT','png')
 close(h)
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(star,'HD85390')
-    % demo jitter % 
-    width   = 200;
+%%%%%%%%%%%%%%%%%%%%%%%%%    
+    width   = 20;
     idx     = MJD < 57300;
     jitter_proto = RV_FTH(idx) - RV_FTL(idx);
     MJD1    = MJD(idx);
@@ -245,6 +244,48 @@ end
 dlmwrite('jitter_smooth.txt', y_smooth0)
 jitter_raw = jitter_raw(idx);
 dlmwrite('jitter_raw.txt', jitter_raw)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if strcmp(star,'LRa01_E2_0165')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+    width   = 1.3;
+    jitter_proto = jitter_raw;
+
+    idx1    = (MJD<54900);
+    MJD1    = MJD(idx1);
+    t_smooth1 = linspace(min(MJD1), max(MJD1), 100001);
+    y_smooth1 = FUNCTION_GAUSSIAN_SMOOTHING(MJD, jitter_proto, 1./RV_noise.^2, t_smooth1, width);
+
+    idx2        = (MJD>54900);
+    MJD2        = MJD(idx2);
+    RV_HARPS2   = RV_HARPS(idx2);
+    RV_FT2      = RV_FT(idx2);
+    jitter2     = jitter_proto(idx2);
+    RV_noise2   = RV_noise(idx2);
+    t_smooth2   = linspace(min(MJD2), max(MJD2), 1001);
+    y_smooth2   = FUNCTION_GAUSSIAN_SMOOTHING(MJD, jitter_proto, 1./RV_noise.^2, t_smooth2, width);
+
+    h = figure; 
+        hold on
+        plot(t_smooth1, y_smooth1)
+        plot(t_smooth2, y_smooth2)
+        errorbar(MJD, jitter_proto, RV_noise, '.', 'MarkerSize', 20)
+        hold off
+        title('Jittere model')
+        xlabel('BJD')    
+        ylabel('Jittere model [m/s]')
+        grid on
+    close(h)
+
+    dlmwrite('MJD_2012.txt', MJD2-min(MJD2))
+    dlmwrite('Jitter_model_2012.txt', jitter2)
+    dlmwrite('RV_HARPS_2012.txt', RV_HARPS2)
+    dlmwrite('RV_FT_2012.txt', RV_FT2)
+    dlmwrite('RV_noise_2012.txt', RV_noise2)
+end
+
+
+
 
 if 0
     % Fitting Part 1 %    
