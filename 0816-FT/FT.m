@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%
 % Parameters %
 %%%%%%%%%%%%%%
-star        = 'Gl581';
+star        = 'HD85390';
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
 file_name   = {file_list.name};
@@ -86,7 +86,7 @@ end
 hold off
 xlabel('\xi [s/km]')
 ylabel('Power')   
-xlim([-0.25 0.25])
+xlim([-0.16 0.16])
 set(gca,'fontsize',20)
 saveas(gcf,'2-FT_power','png')
 % saveas(gcf,'2-Differential_FT_power','png')
@@ -109,7 +109,7 @@ close(h)
 %%%%%%%%%%%%%%%%%%%%%
 % Phase angle -> RV %
 %%%%%%%%%%%%%%%%%%%%%
-n   = (FFT_frequency > -0.22) & (FFT_frequency < 0.22);
+n   = (FFT_frequency > -0.18) & (FFT_frequency < 0.18);
 slope = zeros(1,N_FILE);
 RV_FT  = zeros(1,N_FILE);
 wegihted_velocity = zeros(1,N_FILE);
@@ -160,7 +160,7 @@ saveas(gcf,'4-Relative_phase_angle_L','png')
 close(h)
 
 % high-pass % 
-n       = (FFT_frequency >= 0.06) & (FFT_frequency <= 0.22);
+n       = (FFT_frequency >= 0.06) & (FFT_frequency <= 0.18);
 RV_FTH  = zeros(1,N_FILE);
 h       = figure; 
 hold on
@@ -216,7 +216,7 @@ close(h)
 %%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(star,'HD85390')
 %%%%%%%%%%%%%%%%%%%%%%%%%    
-    width   = 20;
+    width   = 100;
     idx     = MJD < 57300;
     jitter_proto = RV_FTH(idx) - RV_FTL(idx);
     MJD1    = MJD(idx);
@@ -241,7 +241,7 @@ if strcmp(star,'HD85390')
     close(h)
 end
 
-dlmwrite('jitter_smooth.txt', y_smooth0)
+dlmwrite('jitter_smooth100.txt', y_smooth0)
 jitter_raw = jitter_raw(idx);
 dlmwrite('jitter_raw.txt', jitter_raw)
 
