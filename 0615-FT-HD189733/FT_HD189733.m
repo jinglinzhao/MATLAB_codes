@@ -70,6 +70,19 @@ ylabel('Normalized intensity')
 saveas(gcf,'1-Differential_line_Profile','png')
 close(h)
 
+% Determine the midpoint the equally divides the power spectrum %
+cutoff_power= max(max(FFT_power)) * 0.001;
+f_max       = max(FFT_frequency(FFT_power(:,1) > cutoff_power));
+n           = abs(FFT_frequency) <= f_max;
+power_sum   = sum(FFT_power(n,1));
+cum = 0;
+for i = 0:fix(sum(n)/2)
+    cum = cum + FFT_power(size(FFT_power,1)/2+i,1);
+    if cum > power_sum/2
+        break
+    end
+end
+f_HL = FFT_frequency(size(FFT_power,1)/2+i);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 % FT power in all epochs %
@@ -136,10 +149,11 @@ if 0    % old version
     close(h)
 end
 
-n   = (FFT_frequency > -0.15) & (FFT_frequency < 0.15);
-slope = zeros(1,N_FILE);
-RV_FT  = zeros(1,N_FILE);
-wegihted_velocity = zeros(1,N_FILE);
+
+n       = abs(FFT_frequency) <= f_max;
+slope   = zeros(1,N_FILE);
+RV_FT   = zeros(1,N_FILE);
+RV_FT_err  = zeros(1,N_FILE);
 h = figure; 
 hold on
 for i = 1:N_FILE
@@ -153,6 +167,8 @@ for i = 1:N_FILE
     [fitresult, gof] = createFit(xx, yy', weight);
     slope(i) = fitresult.p1;
     RV_FT(i) = -slope(i) / (2*pi);
+    ci              = confint(fitresult,0.95);
+    RV_FT_err(i)    = abs(diff(ci(:,1))*1000 / (4*pi));    
 end
 hold off
 set(gca,'fontsize',20)
@@ -162,8 +178,9 @@ saveas(gcf,'4-Relative_phase_angle','png')
 close(h)
 
 % Low-pass %
-nl      = (FFT_frequency >= 0) & (FFT_frequency < 0.05);
+nl      = (FFT_frequency >= 0) & (FFT_frequency < f_HL);
 RV_FTL  = zeros(1,N_FILE);
+RV_FTL_err  = zeros(1,N_FILE);
 h       = figure; 
 hold on
 for i = 1:N_FILE
@@ -177,6 +194,8 @@ for i = 1:N_FILE
     [fitresult, gof] = createFit(xx, yy', weight);
     slope(i) = fitresult.p1;
     RV_FTL(i) = -slope(i) / (2*pi);
+    ci              = confint(fitresult,0.95);
+    RV_FTL_err(i)   = abs(diff(ci(:,1))*1000 / (4*pi));        
 end
 hold off
 set(gca,'fontsize',20)
@@ -187,8 +206,9 @@ saveas(gcf,'4-Relative_phase_angle_L','png')
 close(h)
 
 % high-pass % 
-n       = (FFT_frequency >= 0.04) & (FFT_frequency <= 0.15);
+n       = (FFT_frequency >= f_HL) & (FFT_frequency <= f_max);
 RV_FTH  = zeros(1,N_FILE);
+RV_FTH_err  = zeros(1,N_FILE);
 h       = figure; 
 hold on
 for i = 1:N_FILE
@@ -201,7 +221,9 @@ for i = 1:N_FILE
     weight = FFT_power(n,i)';
     [fitresult, gof] = createFit(xx, yy', weight);
     slope(i) = fitresult.p1;
-    RV_FTH(i) = -slope(i) / (2*pi);    
+    RV_FTH(i) = -slope(i) / (2*pi);
+    ci              = confint(fitresult,0.95);
+    RV_FTH_err(i)   = abs(diff(ci(:,1))*1000 / (4*pi));            
 end
 hold off
 set(gca,'fontsize',20)
@@ -211,14 +233,16 @@ title('High-pass')
 saveas(gcf,'4-Relative_phase_angle_H','png')
 close(h)
 
-RV_FT = RV_FTH;
-RV_FT = (RV_FT - mean(RV_FT)) * 1000;
+XX = (RV_FT-mean(RV_FT))'*1000;
+YY = (RV_FTL-mean(RV_FTL))'*1000;
+ZZ = (RV_FTH-mean(RV_FTH))'*1000;
+
 
 % Time sequence %
 h = figure; 
     hold on
     errorbar(MJD, RV_HARPS, RV_noise , 'r.', 'MarkerSize', 20)
-    errorbar(MJD, RV_FT, RV_noise , 'b.', 'MarkerSize', 20)
+    errorbar(MJD, XX, RV_noise , 'b.', 'MarkerSize', 20)
     grid on
     hold off
     xlabel('Time [d]')
@@ -239,7 +263,10 @@ close(h)
 
 % demo jitter % 
 width   = 0.008;
-jitter_proto = (RV_HARPS - RV_FT') ;
+RV_FT = ZZ;   
+% jitter_proto = (ZZ - RV_HARPS) + (RV_HARPS - YY); 
+jitter_proto = (ZZ - RV_HARPS);
+% jitter_proto = (RV_HARPS - YY);
 t_smooth1 = linspace(54301.08, 54301.24, 1000);
 y_smooth1 = FUNCTION_GAUSSIAN_SMOOTHING(MJD, jitter_proto, 1./RV_noise.^2, t_smooth1, width);
 t_smooth2 = linspace(54340.98, 54341.14, 1000);
@@ -257,9 +284,8 @@ h = figure;
     grid on
 close(h)
     
-    
 % Fitting Part 1 %    
-idx_t   = (MJD>54301.08) & (MJD<54301.24);
+idx_t   = (MJD>54301.08) & (MJD<54301.241);
 MJD1    = MJD(idx_t);    
 weight1 = 1./RV_noise(idx_t).^2;
 RV_HARPS1   = RV_HARPS(idx_t);
@@ -359,18 +385,18 @@ b = fminunc(fun_b,b0,options);
            
             
 h = figure;
-    subplot(3,1,1:2)
+    subplot(4,1,1:3)
     hold on 
-    scatter(MJD2, RV_FT2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
-    scatter(MJD2, RV_HARPS2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);
+    scatter(MJD2*24, RV_FT2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    scatter(MJD2*24, RV_HARPS2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);
 %     errorbar(MJD2, RV_FT2, RV_noise2, 'k.', 'MarkerSize', 0.1);
 %     errorbar(MJD2, RV_HARPS2, RV_noise2, 'b.', 'MarkerSize', 0.1);
-    plot1 = plot(MJD2, b(1) + b(2) * MJD2, 'b--', 'LineWidth', 2);
+    plot1 = plot(MJD2*24, b(1) + b(2) * MJD2, 'b--', 'LineWidth', 2);
     plot1.Color(4) = 0.4;        
     
     hold off
-    xlim([-0.003 max(MJD2)+0.003])
-    legend('FT', 'Gaussian')
+    xlim([-0.003*24 (max(MJD2)+0.003)*24])
+    legend('RV_{FT,H}', 'RV_{Gaussian}', 'Linear trend')
 %     title('Transit RV curve')
     ylabel('RV [m/s]')
     set(gca,'fontsize', 15)
@@ -378,17 +404,17 @@ h = figure;
     grid on
 
     % Jitter part %
-    subplot(3,1,3)
+    subplot(4,1,4)
     t2_plot         = linspace(min(MJD2), max(MJD2), 1001);
     jitter2_plot    = FUNCTION_GAUSSIAN_SMOOTHING(MJD2, jitter2, weight2, t2_plot, width);
     hold on
-    scatter(MJD2, jitter2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
-    errorbar(MJD2, jitter2, RV_noise2 * sqrt(2), 'k.', 'MarkerSize', 0.1)
-    plot2 = plot(t2_plot, jitter2_plot, 'k-', 'LineWidth',2);
+    scatter(MJD2*24, jitter2, 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    errorbar(MJD2*24, jitter2, RV_noise2 * sqrt(3), 'k.', 'MarkerSize', 0.1)
+    plot2 = plot(t2_plot*24, jitter2_plot, 'k-', 'LineWidth',2);
     plot2.Color(4) = 0.4;       
     hold off
-    xlim([-0.003 max(MJD2)+0.003])
-    xlabel('Time [d]')
+    xlim([-0.003*24 (max(MJD2)+0.003)*24])
+    xlabel('Time [h]')
     ylabel('\Delta RV [m/s]')
     set(gca,'fontsize', 15)
     saveas(gcf,'8-Proto_jitter2','png')
@@ -402,15 +428,18 @@ a0 = [10, 0];
 a = fminunc(fun_a,a0,options);
 
 h = figure;
-subplot(3,1,1:2)       % add first plot in 2 x 1 grid
+subplot(4,1,1:3)       % add first plot in 2 x 1 grid
     hold on 
-    scatter(MJD2, a(1) * jitter2 + a(2), 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
-    plot3 = plot(t2_plot, a(1) * jitter2_plot + a(2) , 'k', 'LineWidth', 2);
+    scatter(MJD2*24, a(1) * jitter2 + a(2), 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    plot3 = plot(t2_plot*24, a(1) * jitter2_plot + a(2) , 'k', 'LineWidth', 2);
     plot3.Color(4) = 0.4;  
-    scatter(MJD2, RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);    
-    errorbar(MJD2, a(1) * jitter2 + a(2), (RV_noise2 * sqrt(2) * a(1)), 'k.', 'MarkerSize', 0.1)
-    errorbar(MJD2, RV_RM2, RV_noise2, 'b.', 'MarkerSize', 0.1)
-    xlim([-0.003 max(MJD2)+0.003])
+    scatter(MJD2*24, RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);    
+%     jitter_final_Z = a(1) * jitter2 + a(2);
+%     err_jitter_final_Z = RV_noise2 * sqrt(3) * a(1);
+    errorbar(MJD2*24, a(1) * jitter2 + a(2), (RV_noise2 * sqrt(3) * a(1)), 'k.', 'MarkerSize', 0.1)
+    errorbar(MJD2*24, RV_RM2, RV_noise2, 'b.', 'MarkerSize', 0.1)
+    xlim([-0.003*24 (max(MJD2)+0.003)*24])
+%     ylim([-100 100])
     ylabel('RV [m/s]')
     set(gca,'fontsize', 15)
     set(gca,'xticklabel',[])
@@ -418,20 +447,20 @@ subplot(3,1,1:2)       % add first plot in 2 x 1 grid
     legend('Model', 'Smoothed model', 'RM effect (Jitter)')
     hold off
     
-subplot(3,1,3)       % add first plot in 2 x 1 grid
+subplot(4,1,4)       % add first plot in 2 x 1 grid
     hold on
 %     scatter(MJD2, a(1) * jitter2 + a(2) - RV_RM2, 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5)
 %     errorbar(MJD2, a(1) * jitter2 + a(2) - RV_RM2, (RV_noise2 * sqrt(2) * a(1)), 'k.', 'MarkerSize', 0.1)
-    scatter(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5)
-    plot5 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 'k', 'LineWidth', 2);
-    plot5.Color(4) = 0.4;
+    scatter(MJD2*24, a(1) * jitter_smooth2 + a(2) - RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5)
+%     plot5 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 'k', 'LineWidth', 2);
+%     plot5.Color(4) = 0.4;
 %     plot4 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2 , 'k', 'LineWidth', 2);
 %     plot4.Color(4) = 0.4;
     hold off
-    xlabel('Time [d]')
+    xlabel('Time [h]')
     ylabel('Residual [m/s]')
 %     ylim([-30 30])
-    xlim([-0.003 max(MJD2)+0.003])
+    xlim([-0.003*24 (max(MJD2)+0.003)*24])
     set(gca,'fontsize', 15)
     saveas(gcf,'9-RM_fit2','png')
 close(h)
