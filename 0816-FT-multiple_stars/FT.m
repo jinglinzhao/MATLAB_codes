@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%
 % Parameters %
 %%%%%%%%%%%%%%
-star        = 'HD10700';
+star        = 'HD128621';
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
 file_name   = {file_list.name};
@@ -16,7 +16,6 @@ x           = importdata([DIR, '/x.dat']);
 RV_noise    = importdata([DIR, '/RV_noise.dat']);
 grid_size   = 0.1;
 Fs          = 1/grid_size;
-
 
 % estimate the size of array FFT_power
 dat_name    = [DIR, '/4-ccf_dat/', char(file_name(1))];
@@ -40,21 +39,13 @@ for n = 1:N_FILE
 %     if mod(n,5) == 1
 %         plot(x, A-A1, 'k-')
 %     end
-    if strcmp(star,'HD85390') || strcmp(star,'HD117618')
-        if MJD(n)<57300
-            plot(x, A-A1, 'k-')
-        else
-            plot(x, A-A1, 'r-')
-        end
-    elseif strcmp(star,'HD7449')
-        if MJD(n)<57100
-            plot(x, A-A1, 'k-')
-        else
-            plot(x, A-A1, 'r-')
-        end
+
+    if MJD(n)<57161
+        plot(x, A-A1, 'k-')
     else
-        plot(x, A-A1, 'k')
+        plot(x, A-A1, 'r-')
     end
+    
     [FFT_frequency, FFT_power(:, n), Y(:, n)] = FUNCTION_FFT(A, Fs);
 end     
 hold off
@@ -201,11 +192,13 @@ RV_FT   = (RV_FT - mean(RV_FT))' * 1000;
 RV_FTL  = (RV_FTL - mean(RV_FTL))' * 1000;
 RV_FTH  = (RV_FTH - mean(RV_FTH))' * 1000;
 
+dlmwrite('GG.txt', RV_HARPS)
 dlmwrite('XX.txt', RV_FT)
 dlmwrite('YY.txt', RV_FTL)
 dlmwrite('ZZ.txt', RV_FTH)
 
 jitter_raw  = RV_HARPS-RV_FTL;
+% jitter_raw  = RV_FTH - RV_HARPS;
 % MJD = MJD - 50000;
 % Time sequence %
 h = figure; 
@@ -221,13 +214,21 @@ h = figure;
     saveas(gcf,'5-Time_sequence','png')
 close(h)
 
-% RV_HARPS vs RV_FT %
+% proto-jitter %
 h = figure; 
     plot(RV_HARPS-RV_FTL, RV_FTH-RV_HARPS, '.', 'MarkerSize', 10)
+    xlabel('RV_{HARPS} - RV_{FT,L} [m/s]')    
+    ylabel('RV_{FT,H} - RV_{HARPS} [m/s]')
+    saveas(gcf,'6-proto-jitter','png')
+close(h)
+
+% RV_HARPS vs RV_FT %
+h = figure; 
+    plot(RV_HARPS, RV_FTL, '.', 'MarkerSize', 10)
     title('RV_{HARPS} vs RV_{FT}')
     xlabel('RV_{HARPS} [m/s]')    
     ylabel('RV_{FT} [m/s]')
-    saveas(gcf,'6-HARPS_vs_FT','png')
+    saveas(gcf,'7-HARPS_vs_FT','png')
 close(h)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
