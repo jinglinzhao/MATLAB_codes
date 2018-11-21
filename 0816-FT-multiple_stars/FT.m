@@ -3,7 +3,8 @@
 %%%%%%%%%%%%%%
 % Parameters %
 %%%%%%%%%%%%%%
-star        = 'HD128621';
+star        = 'GJ699';
+% star        = 'HD128621';
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
 file_name   = {file_list.name};
@@ -62,6 +63,7 @@ close(h)
 % Determine the midpoint the equally divides the power spectrum %
 cutoff_power= max(max(FFT_power)) * 0.001;
 f_max       = max(FFT_frequency(FFT_power(:,1) > cutoff_power));
+% f_max = 0.15;
 n           = abs(FFT_frequency) <= f_max;
 power_sum   = sum(FFT_power(n,1));
 cum = 0;
@@ -90,7 +92,7 @@ end
 hold off
 xlabel('\xi [s/km]')
 ylabel('Power')   
-xlim([-0.16 0.16])
+xlim([-0.26 0.26])
 set(gca,'fontsize',20)
 saveas(gcf,'2-FT_power','png')
 % saveas(gcf,'2-Differential_FT_power','png')
@@ -203,13 +205,13 @@ jitter_raw  = RV_HARPS-RV_FTL;
 % Time sequence %
 h = figure; 
     hold on
-    errorbar(MJD, RV_HARPS, RV_noise , 'r.', 'MarkerSize', 20)
+%     errorbar(MJD, RV_HARPS, RV_noise , 'r.', 'MarkerSize', 20)
     errorbar(MJD, jitter_raw, RV_noise , 'b.', 'MarkerSize', 20)
     grid on
     hold off
     xlabel('Time [d]')
     ylabel('RV [m/s]')
-    legend('HARPS', 'FT')
+%     legend('HARPS', 'FT')
     title(star)
     saveas(gcf,'5-Time_sequence','png')
 close(h)
@@ -234,12 +236,12 @@ close(h)
 %%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(star,'HD85390')
 %%%%%%%%%%%%%%%%%%%%%%%%%    
-    width   = 100;
+    width   = 1;
     idx     = MJD < 57300;
     jitter_proto = RV_FTH(idx) - RV_FTL(idx);
     MJD1    = MJD(idx);
     y_smooth0 = FUNCTION_GAUSSIAN_SMOOTHING(MJD1, jitter_proto, 1./RV_noise(idx).^2, MJD1, width);
-    t_smooth1 = linspace(min(MJD1), max(MJD1), 1000);
+    t_smooth1 = linspace(min(MJD1), max(MJD1), 100000);
     y_smooth1 = FUNCTION_GAUSSIAN_SMOOTHING(MJD1, jitter_proto, 1./RV_noise(idx).^2, t_smooth1, width);
 
     h = figure; 

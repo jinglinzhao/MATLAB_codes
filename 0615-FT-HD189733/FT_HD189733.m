@@ -71,7 +71,7 @@ saveas(gcf,'1-Differential_line_Profile','png')
 close(h)
 
 % Determine the midpoint the equally divides the power spectrum %
-cutoff_power= max(max(FFT_power)) * 0.001;
+cutoff_power= max(max(FFT_power)) * 0.0001;
 f_max       = max(FFT_frequency(FFT_power(:,1) > cutoff_power));
 n           = abs(FFT_frequency) <= f_max;
 power_sum   = sum(FFT_power(n,1));
@@ -263,10 +263,11 @@ close(h)
 
 % demo jitter % 
 width   = 0.008;
-RV_FT = ZZ;   
+% RV_FT = ZZ;  
+RV_FT = YY; 
 % jitter_proto = (ZZ - RV_HARPS) + (RV_HARPS - YY); 
-jitter_proto = (ZZ - RV_HARPS);
-% jitter_proto = (RV_HARPS - YY);
+% jitter_proto = (ZZ - RV_HARPS);
+jitter_proto = (RV_HARPS - YY);
 t_smooth1 = linspace(54301.08, 54301.24, 1000);
 y_smooth1 = FUNCTION_GAUSSIAN_SMOOTHING(MJD, jitter_proto, 1./RV_noise.^2, t_smooth1, width);
 t_smooth2 = linspace(54340.98, 54341.14, 1000);
@@ -369,7 +370,9 @@ idx_t   = (MJD>54340.98) & (MJD<54341.11);
 MJD2    = MJD(idx_t);    
 weight2 = 1./RV_noise(idx_t).^2;
 RV_HARPS2   = RV_HARPS(idx_t);
+RV_HARPS2   = RV_HARPS2 - mean(RV_HARPS2);
 RV_FT2      = RV_FT(idx_t);
+RV_FT2      = RV_FT2 - mean(RV_FT2) - 5;
 RV_noise2   = RV_noise(idx_t);
 jitter2     = jitter_proto(idx_t);
 
@@ -385,9 +388,9 @@ b = fminunc(fun_b,b0,options);
            
             
 h = figure;
-    subplot(4,1,1:3)
+    subplot(16,1,1:14)
     hold on 
-    scatter(MJD2*24, RV_FT2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    scatter(MJD2*24, RV_FT2, 30, 'rD', 'MarkerFaceColor', 'r', 'MarkerFaceAlpha', 0.5);
     scatter(MJD2*24, RV_HARPS2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);
 %     errorbar(MJD2, RV_FT2, RV_noise2, 'k.', 'MarkerSize', 0.1);
 %     errorbar(MJD2, RV_HARPS2, RV_noise2, 'b.', 'MarkerSize', 0.1);
@@ -396,26 +399,28 @@ h = figure;
     
     hold off
     xlim([-0.003*24 (max(MJD2)+0.003)*24])
-    legend('RV_{FT,H}', 'RV_{Gaussian}', 'Linear trend')
+    legend('RV_{FT,L}', 'RV_{HARPS}', 'Linear trend')
 %     title('Transit RV curve')
     ylabel('RV [m/s]')
+    ylim([-59 49])
     set(gca,'fontsize', 15)
     set(gca,'xticklabel',[])    
     grid on
 
     % Jitter part %
-    subplot(4,1,4)
+    subplot(16,1,15:16)
     t2_plot         = linspace(min(MJD2), max(MJD2), 1001);
     jitter2_plot    = FUNCTION_GAUSSIAN_SMOOTHING(MJD2, jitter2, weight2, t2_plot, width);
     hold on
-    scatter(MJD2*24, jitter2, 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
-    errorbar(MJD2*24, jitter2, RV_noise2 * sqrt(3), 'k.', 'MarkerSize', 0.1)
-    plot2 = plot(t2_plot*24, jitter2_plot, 'k-', 'LineWidth',2);
+    scatter(MJD2*24, jitter2 - mean(jitter2), 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
+    errorbar(MJD2*24, jitter2 - mean(jitter2), RV_noise2, 'k.', 'MarkerSize', 0.1)
+    plot2 = plot(t2_plot*24, jitter2_plot - mean(jitter2), 'k-', 'LineWidth',2);
     plot2.Color(4) = 0.4;       
     hold off
     xlim([-0.003*24 (max(MJD2)+0.003)*24])
+    ylim([-3.2 3.2])
     xlabel('Time [h]')
-    ylabel('\Delta RV [m/s]')
+    ylabel('\DeltaRV_{L} [m/s]')
     set(gca,'fontsize', 15)
     saveas(gcf,'8-Proto_jitter2','png')
 close(h)
@@ -428,7 +433,7 @@ a0 = [10, 0];
 a = fminunc(fun_a,a0,options);
 
 h = figure;
-subplot(4,1,1:3)       % add first plot in 2 x 1 grid
+subplot(16,1,1:14)       % add first plot in 2 x 1 grid
     hold on 
     scatter(MJD2*24, a(1) * jitter2 + a(2), 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
     plot3 = plot(t2_plot*24, a(1) * jitter2_plot + a(2) , 'k', 'LineWidth', 2);
@@ -436,22 +441,22 @@ subplot(4,1,1:3)       % add first plot in 2 x 1 grid
     scatter(MJD2*24, RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);    
 %     jitter_final_Z = a(1) * jitter2 + a(2);
 %     err_jitter_final_Z = RV_noise2 * sqrt(3) * a(1);
-    errorbar(MJD2*24, a(1) * jitter2 + a(2), (RV_noise2 * sqrt(3) * a(1)), 'k.', 'MarkerSize', 0.1)
+    errorbar(MJD2*24, a(1) * jitter2 + a(2), (RV_noise2 * a(1)), 'k.', 'MarkerSize', 0.1)
     errorbar(MJD2*24, RV_RM2, RV_noise2, 'b.', 'MarkerSize', 0.1)
     xlim([-0.003*24 (max(MJD2)+0.003)*24])
-%     ylim([-100 100])
+    ylim([-85 85])
     ylabel('RV [m/s]')
     set(gca,'fontsize', 15)
     set(gca,'xticklabel',[])
     grid on 
-    legend('Model', 'Smoothed model', 'RM effect (Jitter)')
+    legend('\alpha \DeltaRV_{L}', 'WMA', 'RM effect')
     hold off
     
-subplot(4,1,4)       % add first plot in 2 x 1 grid
+subplot(16,1,15:16)       % add first plot in 2 x 1 grid
     hold on
 %     scatter(MJD2, a(1) * jitter2 + a(2) - RV_RM2, 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5)
 %     errorbar(MJD2, a(1) * jitter2 + a(2) - RV_RM2, (RV_noise2 * sqrt(2) * a(1)), 'k.', 'MarkerSize', 0.1)
-    scatter(MJD2*24, a(1) * jitter_smooth2 + a(2) - RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5)
+    scatter(MJD2*24, a(1) * jitter_smooth2 + a(2) - RV_RM2, 30, 'ko', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5)
 %     plot5 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 'k', 'LineWidth', 2);
 %     plot5.Color(4) = 0.4;
 %     plot4 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2 , 'k', 'LineWidth', 2);
@@ -461,6 +466,7 @@ subplot(4,1,4)       % add first plot in 2 x 1 grid
     ylabel('Residual [m/s]')
 %     ylim([-30 30])
     xlim([-0.003*24 (max(MJD2)+0.003)*24])
+    ylim([-12 12])
     set(gca,'fontsize', 15)
     saveas(gcf,'9-RM_fit2','png')
 close(h)
