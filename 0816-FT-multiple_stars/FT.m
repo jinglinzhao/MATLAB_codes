@@ -3,8 +3,10 @@
 %%%%%%%%%%%%%%
 % Parameters %
 %%%%%%%%%%%%%%
-star        = 'GJ699';
-% star        = 'HD128621';
+% star        = 'GJ699';
+% star        = 'HD224789';
+star        = 'HD103720';
+% star        = 'HD189733';
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
 file_name   = {file_list.name};
@@ -61,7 +63,8 @@ saveas(gcf,'1-Differential_line_Profile','png')
 close(h)
 
 % Determine the midpoint the equally divides the power spectrum %
-cutoff_power= max(max(FFT_power)) * 0.001;
+cutoff_power= max(max(FFT_power)) * 0.005;
+% cutoff_power= max(max(FFT_power)) * 0.005; % HD189733
 f_max       = max(FFT_frequency(FFT_power(:,1) > cutoff_power));
 % f_max = 0.15;
 n           = abs(FFT_frequency) <= f_max;
@@ -202,11 +205,24 @@ dlmwrite('ZZ.txt', RV_FTH)
 jitter_raw  = RV_HARPS-RV_FTL;
 % jitter_raw  = RV_FTH - RV_HARPS;
 % MJD = MJD - 50000;
+
+% visual check
+figure; 
+    hold on
+    errorbar(MJD, RV_HARPS, RV_noise , 'k.', 'MarkerSize', 20)
+    errorbar(MJD, RV_FT, RV_noise , 'b.', 'MarkerSize', 20)
+    grid on
+    hold off
+    xlabel('Time [d]')
+    ylabel('RV [m/s]')
+    title(star)
+
 % Time sequence %
 h = figure; 
     hold on
-%     errorbar(MJD, RV_HARPS, RV_noise , 'r.', 'MarkerSize', 20)
-    errorbar(MJD, jitter_raw, RV_noise , 'b.', 'MarkerSize', 20)
+    errorbar(MJD, RV_HARPS, RV_noise , 'k.', 'MarkerSize', 20)
+    errorbar(MJD, RV_FTL, RV_noise , 'b.', 'MarkerSize', 20)
+    errorbar(MJD, RV_FTH, RV_noise , 'r.', 'MarkerSize', 20)
     grid on
     hold off
     xlabel('Time [d]')
@@ -226,12 +242,24 @@ close(h)
 
 % RV_HARPS vs RV_FT %
 h = figure; 
-    plot(RV_HARPS, RV_FTL, '.', 'MarkerSize', 10)
+    hold on
+    plot(RV_HARPS, RV_FTL, 'b.', 'MarkerSize', 10)
+%     plot(RV_HARPS, RV_FTH, 'r.', 'MarkerSize', 10)
+    hold off
     title('RV_{HARPS} vs RV_{FT}')
     xlabel('RV_{HARPS} [m/s]')    
     ylabel('RV_{FT} [m/s]')
     saveas(gcf,'7-HARPS_vs_FT','png')
 close(h)
+
+% RV_HARPS vs RV_FT %
+h = figure; 
+    hold on
+    plot(RV_HARPS, jitter_raw, 'b.', 'MarkerSize', 10)
+    hold off
+    title('RV_{HARPS} vs \DeltaRV_{FT,L}')
+    xlabel('RV_{HARPS} [m/s]')    
+    ylabel('\DeltaRV_{FT,L} [m/s]')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(star,'HD85390')
@@ -304,190 +332,7 @@ if strcmp(star,'LRa01_E2_0165')
     dlmwrite('RV_noise_2012.txt', RV_noise2)
 end
 
-
-
-
 if 0
-    % Fitting Part 1 %    
-    idx_t   = (MJD>54301.08) & (MJD<54301.24);
-    MJD1    = MJD(idx_t);    
-    weight1 = 1./RV_noise(idx_t).^2;
-    RV_HARPS1   = RV_HARPS(idx_t);
-    RV_FT1      = RV_FT(idx_t);
-    RV_noise1   = RV_noise(idx_t);
-    jitter1     = jitter_proto(idx_t);
-
-    % Linear part %
-    MJD1        = MJD1 - min(MJD1);
-    idx_linear  = (MJD1>0.08);
-    MJD1_linear = MJD1(idx_linear);
-    RV_HARPS1_linear    = RV_HARPS1(idx_linear);
-    weight_linear       = weight1(idx_linear);
-    fun_b   = @(b) sum((b(1) + b(2) * MJD1_linear - RV_HARPS1_linear).^2 .*weight_linear);
-    options = optimoptions(@fminunc,'Algorithm','quasi-newton');
-    b0  = [max(RV_HARPS1), -max(RV_HARPS1)/max(MJD1)];
-    b   = fminunc(fun_b,b0,options);
-
-    h = figure;
-        hold on 
-        errorbar(MJD1, RV_HARPS1, RV_noise1, 'r.')
-        errorbar(MJD1, RV_FT1, RV_noise1, 'b*')
-        plot(MJD1, b(1) + b(2) * MJD1, '-')
-        xlim([-0.003 max(MJD1)+0.003])
-        legend('HARPS', 'FT')
-        title('Transit RV curve')
-        xlabel('Time [d]')
-        ylabel('RV [m/s]')
-        saveas(gcf,'7-RM_effect1','png')
-        hold off
-    close(h)
-
-    % Jitter part %
-
-    t1_plot         = linspace(min(MJD1), max(MJD1), 1001);
-    jitter1_plot    = FUNCTION_GAUSSIAN_SMOOTHING(MJD1, jitter1, weight1, t1_plot, width);
-
-    h = figure;
-        hold on 
-        errorbar(MJD1, jitter1, RV_noise1, 'b*')
-        plot(t1_plot, jitter1_plot, 'b-')
-        xlim([-0.003 max(MJD1)+0.003])
-        xlabel('Time [d]')
-        ylabel('RV [m/s]')
-        legend('Proto jitter', 'Moving average')
-        title('Proto jitter')
-        saveas(gcf,'8-Proto_jitter1','png')
-        hold off
-    close(h)
-
-    jitter_smooth1  = FUNCTION_GAUSSIAN_SMOOTHING(MJD1, jitter1, weight1, MJD1, width);
-    RV_RM1  =  RV_HARPS1 - (b(1) + b(2) * MJD1);
-    fun_a   = @(a) sum((a(1) * jitter_smooth1 + a(2) - RV_RM1) .^2 .* weight1);
-    options = optimoptions(@fminunc,'Algorithm','quasi-newton');
-    a0 = [10, 0];
-    a = fminunc(fun_a,a0,options);
-
-    h = figure;
-        subplot(2,1,1)       % add first plot in 2 x 1 grid
-        hold on 
-        errorbar(MJD1, RV_RM1, RV_noise1, 'r.')
-        errorbar(MJD1, a(1) * jitter_smooth1 + a(2), RV_noise1, 'b*')
-        xlim([-0.003 max(MJD1)+0.003])
-        ylabel('RV [m/s]')
-        title('Jitter recovery')
-        legend('HARPS', 'FT')
-        hold off
-        subplot(2,1,2)       % add first plot in 2 x 1 grid
-        errorbar(MJD1, a(1) * jitter_smooth1 + a(2) - RV_RM1, RV_noise1, 'k.')
-        xlabel('Time [d]')
-        ylabel('Residual [m/s]')
-        xlim([-0.003 max(MJD1)+0.003])
-        saveas(gcf,'9-RM_fit1','png')
-    close(h)
-
-    %%%%%%%%%%%%%%%%%%
-    % Fitting Part 2 %   
-    %%%%%%%%%%%%%%%%%%
-
-    idx_t   = (MJD>54340.98) & (MJD<54341.11);
-    MJD2    = MJD(idx_t);    
-    weight2 = 1./RV_noise(idx_t).^2;
-    RV_HARPS2   = RV_HARPS(idx_t);
-    RV_FT2      = RV_FT(idx_t);
-    RV_noise2   = RV_noise(idx_t);
-    jitter2     = jitter_proto(idx_t);
-
-    % Linear part %
-    MJD2    = MJD2 - min(MJD2);
-    idx_linear  = (MJD2 < 0.024) | (MJD2 > 0.107);
-    MJD2_linear = MJD2(idx_linear);
-    RV_HARPS2_linear    = RV_HARPS2(idx_linear);
-    weight_linear       = weight2(idx_linear);
-    fun_b = @(b) sum((b(1) + b(2) * MJD2_linear - RV_HARPS2_linear).^2 .* weight_linear);
-    b0 = [max(RV_HARPS2), -max(RV_HARPS2)/max(MJD2)];
-    b = fminunc(fun_b,b0,options);
-
-
-    h = figure;
-        subplot(3,1,1:2)
-        hold on 
-        scatter(MJD2, RV_FT2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
-        scatter(MJD2, RV_HARPS2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);
-    %     errorbar(MJD2, RV_FT2, RV_noise2, 'k.', 'MarkerSize', 0.1);
-    %     errorbar(MJD2, RV_HARPS2, RV_noise2, 'b.', 'MarkerSize', 0.1);
-        plot1 = plot(MJD2, b(1) + b(2) * MJD2, 'b--', 'LineWidth', 2);
-        plot1.Color(4) = 0.4;        
-
-        hold off
-        xlim([-0.003 max(MJD2)+0.003])
-        legend('FT', 'Gaussian')
-    %     title('Transit RV curve')
-        ylabel('RV [m/s]')
-        set(gca,'fontsize', 15)
-        set(gca,'xticklabel',[])    
-        grid on
-
-        % Jitter part %
-        subplot(3,1,3)
-        t2_plot         = linspace(min(MJD2), max(MJD2), 1001);
-        jitter2_plot    = FUNCTION_GAUSSIAN_SMOOTHING(MJD2, jitter2, weight2, t2_plot, width);
-        hold on
-        scatter(MJD2, jitter2, 30, 'kD', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
-        errorbar(MJD2, jitter2, RV_noise2 * sqrt(2), 'k.', 'MarkerSize', 0.1)
-        plot2 = plot(t2_plot, jitter2_plot, 'k-', 'LineWidth',2);
-        plot2.Color(4) = 0.4;       
-        hold off
-        xlim([-0.003 max(MJD2)+0.003])
-        xlabel('Time [d]')
-        ylabel('\Delta RV [m/s]')
-        set(gca,'fontsize', 15)
-        saveas(gcf,'8-Proto_jitter2','png')
-    close(h)
-
-    jitter_smooth2  = FUNCTION_GAUSSIAN_SMOOTHING(MJD2, jitter2, weight2, MJD2, width);
-    RV_RM2 = RV_HARPS2 - (b(1) + b(2) * MJD2);
-    fun_a = @(a) sum((a(1) * jitter_smooth2 + a(2) - RV_RM2).^2 .* weight2);
-    options = optimoptions(@fminunc,'Algorithm','quasi-newton');
-    a0 = [10, 0];
-    a = fminunc(fun_a,a0,options);
-
-    h = figure;
-    subplot(3,1,1:2)       % add first plot in 2 x 1 grid
-        hold on 
-        scatter(MJD2, a(1) * jitter2 + a(2), 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5);
-        plot3 = plot(t2_plot, a(1) * jitter2_plot + a(2) , 'k', 'LineWidth', 2);
-        plot3.Color(4) = 0.4;  
-        scatter(MJD2, RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5);    
-        errorbar(MJD2, a(1) * jitter2 + a(2), (RV_noise2 * sqrt(2) * a(1)), 'k.', 'MarkerSize', 0.1)
-        errorbar(MJD2, RV_RM2, RV_noise2, 'b.', 'MarkerSize', 0.1)
-        xlim([-0.003 max(MJD2)+0.003])
-        ylabel('RV [m/s]')
-        set(gca,'fontsize', 15)
-        set(gca,'xticklabel',[])
-        grid on 
-        legend('Model', 'Smoothed model', 'RM effect (Jitter)')
-        hold off
-
-    subplot(3,1,3)       % add first plot in 2 x 1 grid
-        hold on
-    %     scatter(MJD2, a(1) * jitter2 + a(2) - RV_RM2, 30, 'ks', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.5)
-    %     errorbar(MJD2, a(1) * jitter2 + a(2) - RV_RM2, (RV_noise2 * sqrt(2) * a(1)), 'k.', 'MarkerSize', 0.1)
-        scatter(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 30, 'bo', 'MarkerFaceColor', 'b', 'MarkerFaceAlpha', 0.5)
-        plot5 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2, 'k', 'LineWidth', 2);
-        plot5.Color(4) = 0.4;
-    %     plot4 = plot(MJD2, a(1) * jitter_smooth2 + a(2) - RV_RM2 , 'k', 'LineWidth', 2);
-    %     plot4.Color(4) = 0.4;
-        hold off
-        xlabel('Time [d]')
-        ylabel('Residual [m/s]')
-    %     ylim([-30 30])
-        xlim([-0.003 max(MJD2)+0.003])
-        set(gca,'fontsize', 15)
-        saveas(gcf,'9-RM_fit2','png')
-    close(h)
-
-
-
     dlmwrite('MJD_2012.txt', MJD-MJD(1))
     dlmwrite('Jitter_model_2012.txt', jitter_proto)
     dlmwrite('RV_HARPS_2012.txt', (RV_HARPS - mean(RV_HARPS)) * 1000)
