@@ -6,6 +6,10 @@
 % star        = 'GJ699';
 % star        = 'HD224789';
 star        = 'HD103720';
+% star        = 'HD36051';
+% star        = 'HD200143';
+% star        = 'BD-213153';
+% star        = 'HD216770';
 % star        = 'HD189733';
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
@@ -28,6 +32,47 @@ size1       = length(bb);
 FFT_power   = zeros(size1, N_FILE);
 Y           = zeros(size1, N_FILE);
 
+
+% construct a master template
+h = figure;
+hold on
+A_tpl = zeros(size(A1));
+for n = 1:N_FILE
+    dat_name    = [DIR, '/4-ccf_dat/', char(file_name(n))];
+    A           = importdata(dat_name);
+    A_spline    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
+    A_tpl       = A_tpl + A_spline / RV_noise(n)^2;    
+end     
+A_tpl = A_tpl / sum(1./RV_noise.^2);
+plot(x, A_tpl)
+
+
+h = figure;
+hold on
+array = 1:N_FILE;
+for n = 1:N_FILE
+
+    dat_name    = [DIR, '/4-ccf_dat/', char(file_name(n))];
+    A           = importdata(dat_name);
+%     A_spline    = spline(x, A, x+(BI(n)-BI(1))/1000);
+    A_spline    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
+    plot(x, A_spline - A_tpl, 'k-')
+end     
+errorbar(median(x), 0, 1/4000, 'r', 'LineWidth',3')
+
+hold off
+% title('Stacked cross correlation function')
+% ylim([-0.001 0.1])
+set(gca,'fontsize',24)
+xlabel('km/s')
+ylabel('Normalized intensity')
+% title('Line profile (stacked)')
+title('Differential line profile')
+
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Stacked cross correlation function %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -44,9 +89,9 @@ for n = 1:N_FILE
 %     end
 
     if MJD(n)<57161
-        plot(x, A-A1, 'k-')
+        plot(x, A-A_tpl, 'k-')
     else
-        plot(x, A-A1, 'r-')
+        plot(x, A-A_tpl, 'r-')
     end
     
     [FFT_frequency, FFT_power(:, n), Y(:, n)] = FUNCTION_FFT(A, Fs);
@@ -62,21 +107,40 @@ title(star)
 saveas(gcf,'1-Differential_line_Profile','png')
 close(h)
 
+
+%%%%%%%%%%%%
+% Archived %
+%%%%%%%%%%%%
+% cutoff_power= max(max(FFT_power)) * 0.001;
+% f_max       = max(FFT_frequency(FFT_power(:,1) > cutoff_power));
+% n           = abs(FFT_frequency) <= f_max;
+% power_sum   = sum(FFT_power(n,1));
+% cum = 0;
+% for i = 0:fix(sum(n)/2)
+%     cum = cum + FFT_power(size(FFT_power,1)/2+i,1);
+%     if cum > power_sum/2
+%         break
+%     end
+% end
+% f_HL = FFT_frequency(size(FFT_power,1)/2+i);
+
+
 % Determine the midpoint the equally divides the power spectrum %
-cutoff_power= max(max(FFT_power)) * 0.005;
-% cutoff_power= max(max(FFT_power)) * 0.005; % HD189733
+% cutoff_power= max(max(FFT_power)) * 0.005; % HD224789
+cutoff_power= max(max(FFT_power)) * 0.001; 
 f_max       = max(FFT_frequency(FFT_power(:,1) > cutoff_power));
-% f_max = 0.15;
 n           = abs(FFT_frequency) <= f_max;
 power_sum   = sum(FFT_power(n,1));
+% half power %
 cum = 0;
-for i = 0:fix(sum(n)/2)
-    cum = cum + FFT_power(size(FFT_power,1)/2+i,1);
-    if cum > power_sum/2
+for i = 1:fix(sum(n)/2)
+    cum = cum + FFT_power(size(FFT_power,1)/2+1+i,1);
+    if cum > power_sum/4
         break
     end
 end
-f_HL = FFT_frequency(size(FFT_power,1)/2+i);
+f_HL = FFT_frequency(size(FFT_power,1)/2+1+i);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 % FT power in all epochs %
@@ -144,7 +208,7 @@ saveas(gcf,'4-Relative_phase_angle','png')
 close(h)
 
 % Low-pass %
-nl      = (FFT_frequency >= 0) & (FFT_frequency < f_HL);
+nl      = (FFT_frequency >= 0) & (FFT_frequency <= f_HL);
 RV_FTL  = zeros(1,N_FILE);
 h       = figure; 
 hold on
@@ -210,7 +274,7 @@ jitter_raw  = RV_HARPS-RV_FTL;
 figure; 
     hold on
     errorbar(MJD, RV_HARPS, RV_noise , 'k.', 'MarkerSize', 20)
-    errorbar(MJD, RV_FT, RV_noise , 'b.', 'MarkerSize', 20)
+    errorbar(MJD, RV_FT, RV_noise , 'r.', 'MarkerSize', 20)
     grid on
     hold off
     xlabel('Time [d]')
@@ -221,8 +285,8 @@ figure;
 h = figure; 
     hold on
     errorbar(MJD, RV_HARPS, RV_noise , 'k.', 'MarkerSize', 20)
-    errorbar(MJD, RV_FTL, RV_noise , 'b.', 'MarkerSize', 20)
-    errorbar(MJD, RV_FTH, RV_noise , 'r.', 'MarkerSize', 20)
+    errorbar(MJD, jitter_raw, RV_noise , 'b.', 'MarkerSize', 20)
+%     errorbar(MJD, RV_FTH, RV_noise , 'r.', 'MarkerSize', 20)
     grid on
     hold off
     xlabel('Time [d]')
