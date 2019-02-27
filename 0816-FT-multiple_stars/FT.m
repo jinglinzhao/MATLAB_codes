@@ -17,7 +17,7 @@ file_name   = {file_list.name};
 N_FILE      = size(file_name, 2);
 
 MJD         = importdata([DIR, '/MJD.dat']);
-RV_HARPS    = importdata([DIR, '/RV_HARPS.dat']);                    % m/s
+RV_HARPS    = importdata([DIR, '/RV_HARPS.dat']);                  
 RV_HARPS    = (RV_HARPS - mean(RV_HARPS)) * 1000;
 x           = importdata([DIR, '/x.dat']);
 RV_noise    = importdata([DIR, '/RV_noise.dat']);
@@ -93,7 +93,9 @@ for n = 1:N_FILE
     else
         plot(x, A-A_tpl, 'r-')
     end
-    
+    if 1
+        A    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
+    end
     [FFT_frequency, FFT_power(:, n), Y(:, n)] = FUNCTION_FFT(A, Fs);
 end     
 hold off

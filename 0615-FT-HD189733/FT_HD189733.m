@@ -78,21 +78,22 @@ for n = 1:N_FILE
 
     dat_name    = [DIR, '/4-ccf_dat/', char(file_name(n))];
     A           = importdata(dat_name);
-%     A_spline    = spline(x, A, x+(BI(n)-BI(1))/1000);
-    A_spline    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
+    A_spline    = spline(x, A, x+(BI(n)-BI(1))/1000);
+%     A_spline    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
     
-%     if ismember(n, array(n0))
+    if ismember(n, array(n0))
 %         plot(x, A_spline - A_tpl, 'k-')
-% %         
-%     end
-%     if ismember(n, array(n1))
+        plot(x, A, 'k-')
+%         
+    end
+    if ismember(n, array(n1))
 %         plot(x, A_spline - A_tpl, 'b-')
-% %         plot(x, A, 'b-')
-%     end    
-%     if ismember(n, array(n2))
+        plot(x, A, 'b-')
+    end    
+    if ismember(n, array(n2))
 %         plot(x, A_spline - A_tpl, 'r-')
-% %         plot(x, A, 'r-')
-%     end
+        plot(x, A, 'r-')
+    end
     
     % NEW %
 %     A_spline    = spline(v1, A_spline, v1+f.b);    
@@ -101,15 +102,16 @@ for n = 1:N_FILE
 end     
 hold off
 set(gca,'fontsize', 20)
-xlabel('km/s')
+xlabel('Velocity [km/s]')
 ylabel('Normalized intensity')
-% title('Line profile of HD 189733')
+title('Line profile of HD 189733')
 % title({'Residual line profile', 'of HD 189733'})
-title({'Centred residual line profile', 'of HD 189733'})
-ylim([-0.0008 0.0008])
-% ylim([0 0.09])
-% saveas(gcf,'HD189733LineProfile','png')
-saveas(gcf,'HD189733DLP2','png')
+% title({'Centred residual line profile', 'of HD 189733'})
+% ylim([-0.0008 0.0008])
+set(gca,'fontsize',20)
+ylim([0 0.09])
+saveas(gcf,'HD189733LineProfile','png')
+% saveas(gcf,'HD189733DLP1','png')
 
 
 
