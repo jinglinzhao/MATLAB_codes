@@ -5,12 +5,14 @@
 %%%%%%%%%%%%%%
 % star        = 'GJ699';
 % star        = 'HD224789';
-star        = 'HD103720';
+% star        = 'HD103720';
 % star        = 'HD36051';
 % star        = 'HD200143';
 % star        = 'BD-213153';
 % star        = 'HD216770';
 % star        = 'HD189733';
+% star        = 'HD22049';
+star        = 'HD128621';
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
 file_name   = {file_list.name};
@@ -58,7 +60,7 @@ for n = 1:N_FILE
     A_spline    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
     plot(x, A_spline - A_tpl, 'k-')
 end     
-errorbar(median(x), 0, 1/4000, 'r', 'LineWidth',3')
+errorbar(median(x), 0, 1/7676, 'r', 'LineWidth',3')
 
 hold off
 % title('Stacked cross correlation function')
@@ -67,7 +69,7 @@ set(gca,'fontsize',24)
 xlabel('km/s')
 ylabel('Normalized intensity')
 % title('Line profile (stacked)')
-title('Differential line profile')
+title('Centred differential line profile')
 
 
 
@@ -93,7 +95,7 @@ for n = 1:N_FILE
     else
         plot(x, A-A_tpl, 'r-')
     end
-    if 1
+    if 0
         A    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
     end
     [FFT_frequency, FFT_power(:, n), Y(:, n)] = FUNCTION_FFT(A, Fs);
