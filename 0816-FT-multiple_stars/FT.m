@@ -5,14 +5,15 @@
 %%%%%%%%%%%%%%
 % star        = 'GJ699';
 % star        = 'HD224789';
-% star        = 'HD103720';
+star        = 'HD103720';
 % star        = 'HD36051';
 % star        = 'HD200143';
 % star        = 'BD-213153';
 % star        = 'HD216770';
 % star        = 'HD189733';
 % star        = 'HD22049';
-star        = 'HD128621';
+% star        = 'HD128621';
+
 DIR         = ['/Volumes/DataSSD/OneDrive - UNSW/Hermite_Decomposition/ESO_HARPS/', star];
 file_list   = dir([DIR, '/4-ccf_dat/*.dat']);
 file_name   = {file_list.name};
@@ -47,6 +48,8 @@ for n = 1:N_FILE
 end     
 A_tpl = A_tpl / sum(1./RV_noise.^2);
 plot(x, A_tpl)
+close(h)
+
 
 
 h = figure;
@@ -70,8 +73,7 @@ xlabel('km/s')
 ylabel('Normalized intensity')
 % title('Line profile (stacked)')
 title('Centred differential line profile')
-
-
+close(h)
 
 
 
@@ -95,9 +97,11 @@ for n = 1:N_FILE
     else
         plot(x, A-A_tpl, 'r-')
     end
-    if 0
-        A    = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
+    
+    if strcmp(star, 'HD103720')
+        A = spline(x, A, x+(RV_HARPS(n)-RV_HARPS(1))/1000);
     end
+    
     [FFT_frequency, FFT_power(:, n), Y(:, n)] = FUNCTION_FFT(A, Fs);
 end     
 hold off
@@ -131,7 +135,7 @@ close(h)
 
 % Determine the midpoint the equally divides the power spectrum %
 % cutoff_power= max(max(FFT_power)) * 0.005; % HD224789
-cutoff_power= max(max(FFT_power)) * 0.001; 
+cutoff_power= max(max(FFT_power)) * 0.001; % HD103720
 f_max       = max(FFT_frequency(FFT_power(:,1) > cutoff_power));
 n           = abs(FFT_frequency) <= f_max;
 power_sum   = sum(FFT_power(n,1));
@@ -144,6 +148,10 @@ for i = 1:fix(sum(n)/2)
     end
 end
 f_HL = FFT_frequency(size(FFT_power,1)/2+1+i);
+% f_HL = f_max * 0.5;
+% n1 = abs(FFT_frequency) <= f_HL;
+% power_sum1   = sum(FFT_power(n1,1)); % 95% of power_sum
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -209,7 +217,7 @@ set(gca,'fontsize',20)
 xlabel('\xi [s/km]')
 ylabel('\Delta \phi [radian]')
 saveas(gcf,'4-Relative_phase_angle','png')
-close(h)
+
 
 % Low-pass %
 nl      = (FFT_frequency >= 0) & (FFT_frequency <= f_HL);
@@ -261,6 +269,10 @@ title('High-pass')
 saveas(gcf,'4-Relative_phase_angle_H','png')
 close(h)
 
+% RV_FT   = RV_FT' * 1000;
+% RV_FTL  = RV_FTL' * 1000;
+% RV_FTH  = RV_FTH' * 1000;
+
 RV_FT   = (RV_FT - mean(RV_FT))' * 1000;
 RV_FTL  = (RV_FTL - mean(RV_FTL))' * 1000;
 RV_FTH  = (RV_FTH - mean(RV_FTH))' * 1000;
@@ -275,7 +287,7 @@ jitter_raw  = RV_HARPS-RV_FTL;
 % MJD = MJD - 50000;
 
 % visual check
-figure; 
+h = figure; 
     hold on
     errorbar(MJD, RV_HARPS, RV_noise , 'k.', 'MarkerSize', 20)
     errorbar(MJD, RV_FT, RV_noise , 'r.', 'MarkerSize', 20)
@@ -284,6 +296,7 @@ figure;
     xlabel('Time [d]')
     ylabel('RV [m/s]')
     title(star)
+close(h)
 
 % Time sequence %
 h = figure; 
@@ -328,6 +341,8 @@ h = figure;
     title('RV_{HARPS} vs \DeltaRV_{FT,L}')
     xlabel('RV_{HARPS} [m/s]')    
     ylabel('\DeltaRV_{FT,L} [m/s]')
+close(h)
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(star,'HD85390')
@@ -357,9 +372,9 @@ if strcmp(star,'HD85390')
     close(h)
 end
 
-dlmwrite('jitter_smooth100.txt', y_smooth0)
-jitter_raw = jitter_raw(idx);
-dlmwrite('jitter_raw.txt', jitter_raw)
+% dlmwrite('jitter_smooth100.txt', y_smooth0)
+% jitter_raw = jitter_raw(idx);
+% dlmwrite('jitter_raw.txt', jitter_raw)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(star,'LRa01_E2_0165')
